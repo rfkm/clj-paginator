@@ -102,26 +102,25 @@
 
 (defn paginate [target page & [{:keys [type limit window]}]]
   (let [total-count (count target)
-        limit (or limit 20)
-        items target
-        num-items (count items)
-        start-idx (if (> num-items 0) (inc (* (dec page) limit)) 0)
-        end-idx (if (> num-items 0) (dec (+ start-idx num-items)) 0)
-        start-page 1
-        max-page (int (Math/ceil (/ total-count limit)))
-        ]
-    {:total-count total-count
-     :items items
-     :count num-items
-     :start-index start-idx
-     :end-index end-idx
-     :current-page page
-     :start-page start-page
-     :pages (for [i (range start-page (inc max-page))]
-              {:page i
-               :active? (= page i)})
-     :max-page max-page
-     :next-page (when (< page max-page) (inc page))
+        limit       (or limit 20)
+        items       target
+        num-items   (count items)
+        start-idx   (if (pos? num-items) (inc (* (dec page) limit)) 0)
+        end-idx     (if (pos? num-items) (dec (+ start-idx num-items)) 0)
+        start-page  1
+        max-page    (int (Math/ceil (/ total-count limit)))]
+    {:total-count   total-count
+     :items         items
+     :count         num-items
+     :start-index   start-idx
+     :end-index     end-idx
+     :current-page  page
+     :start-page    start-page
+     :pages         (for [i (range start-page (inc max-page))]
+                      {:page i
+                       :active? (= page i)})
+     :max-page      max-page
+     :next-page     (when (< page max-page) (inc page))
      :previous-page (when (> page 1) (dec page))}))
 
 ;; (defn paginate [target page & [{:keys [type limit window]}]]
@@ -231,8 +230,8 @@
             (let [whole-cnt (get-count query)
                   entities (fetch-paginated-entities query page per-page)
                   cnt (count entities)
-                  start-idx (if (> cnt 0) (inc (* (dec page) per-page)) 0)
-                  end-idx (if (> cnt 0) (dec (+ start-idx cnt)) 0)
+                  start-idx (if (pos? cnt) (inc (* (dec page) per-page)) 0)
+                  end-idx (if (pos? cnt) (dec (+ start-idx cnt)) 0)
                   max-page (int (Math/ceil (/ whole-cnt per-page)))]
               {:whole-count whole-cnt
                :entities entities
