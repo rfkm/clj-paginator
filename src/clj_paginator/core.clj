@@ -4,8 +4,26 @@
             [korma.core :refer :all]))
 
 
+;; (def-map-type LazyMap [m]
+;;   (get [_ k default-value]
+;;        (if (contains? m k)
+;;          (let [v (get m k)]
+;;            (if (instance? clojure.lang.Delay v)
+;;              @v
+;;              v))
+;;          default-value))
+;;   (assoc [_ k v]
+;;     (LazyMap. (assoc m k v)))
+;;   (dissoc [_ k]
+;;           (LazyMap. (dissoc m k)))
+;;   (keys [_]
+;;         (keys m)))
+
+;; (LazyMap )
+
+
 (defn guess-target-type [target]
-  (condr.
+  (cond
    (u/korma? target) :korma
    (u/lazy? target)  :lazy
    (coll? target)    :collection))
@@ -53,17 +71,39 @@
 ;; (def has-previous? nil)
 ;; (defmulti has-previous? :type)
 
-;; (defn paginate [target page & [{:keys [type limit window]}]]
-;;   (letfn [(assoc-1 [map key val]
-;;             (if (nil? val)
-;;               map
-;;               (assoc map key val)))]
-;;     (-> (empty-pagination)
-;;         (assoc :type (or type
-;;                          (guess-target-type target)))
-;;         (assoc-1 :page page)
-;;         (assoc-1 :limit limit)
-;;         (assoc :target target))))
+'(defn paginate [target page & [{:keys [type limit window]}]]
+   (letfn [(assoc-1 [map key val]
+             (if (nil? val)
+               map
+               (assoc map key val)))]
+     (-> (empty-pagination)
+         (assoc :type (or type
+                          (guess-target-type target)))
+         (assoc-1 :page page)
+         (assoc-1 :limit limit)
+         (assoc :target target))))
+
+
+(defn paginate [target page & [{:keys [type limit window]}]]
+  (let [total-count (get-total-count target)
+        limit (or limit 20)
+        items (get-items target page limit)
+        num-items (count items)
+        start-idx (if (> num-items 0) (inc (* (dec page) limit)) 0)
+        end-idx (if (> num-items 0) (dec (+ start-idx num-items)) 0)
+        max-page (int (Math/ceil (/ total-count limit)))
+        ]
+    {:total-count total-count
+     :items items
+     :count cnt
+     :start-index start-idx
+     :end-index end-idx
+     :current-page page
+     :max-page max-page
+     :has-next? (< page max-page)
+     :has-previous? (> page 1)
+     :next (when (< page max-page) (inc page))
+     :previous (when (> page 1) (dec page))}))
 
 ;; (def get-next-page nil)
 ;; (defmulti get-next-page :type)
