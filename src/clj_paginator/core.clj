@@ -1,7 +1,23 @@
 (ns clj-paginator.core
   (:require [clj-paginator.utils :as u]
             [hiccup.core :refer [html]]
-            [korma.core :refer :all]))
+            [korma.core :refer :all]
+            [potemkin :refer :all]))
+
+;; (def-map-type LazyMap [m]
+;;   (get [_ k default-value]
+;;        (if (contains? m k)
+;;          (let [v (get m k)]
+;;            (if (instance? clojure.lang.Delay v)
+;;              @v
+;;              v))
+;;          default-value))
+;;   (assoc [_ k v]
+;;     (LazyMap. (assoc m k v)))
+;;   (dissoc [_ k]
+;;           (LazyMap. (dissoc m k)))
+;;   (keys [_]
+;;         (keys m)))
 
 
 ;; (def-map-type LazyMap [m]
@@ -22,27 +38,27 @@
 ;; (LazyMap )
 
 
-(defn guess-target-type [target]
-  (cond
-   (u/korma? target) :korma
-   (u/lazy? target)  :lazy
-   (coll? target)    :collection))
+;; (defn guess-target-type [target]
+;;   (cond
+;;    (u/korma? target) :korma
+;;    (u/lazy? target)  :lazy
+;;    (coll? target)    :collection))
 
-(defn empty-pagination []
-  {:page 1
-   :limit 20
-   :type :collection
-   :target nil
-   :window 0
-   :outer-window 0
-   :renderer nil
-   ;; :count 0
-   ;; :total-count nil
-   ;; :previous nil
-   ;; :next nil
-   ;; :first-item-index nil
-   ;; :last-item-index nil
-   })
+;; (defn empty-pagination []
+;;   {:page 1
+;;    :limit 20
+;;    :type :collection
+;;    :target nil
+;;    :window 0
+;;    :outer-window 0
+;;    :renderer nil
+;;    ;; :count 0
+;;    ;; :total-count nil
+;;    ;; :previous nil
+;;    ;; :next nil
+;;    ;; :first-item-index nil
+;;    ;; :last-item-index nil
+;;    })
 
 
 
@@ -71,39 +87,57 @@
 ;; (def has-previous? nil)
 ;; (defmulti has-previous? :type)
 
-'(defn paginate [target page & [{:keys [type limit window]}]]
-   (letfn [(assoc-1 [map key val]
-             (if (nil? val)
-               map
-               (assoc map key val)))]
-     (-> (empty-pagination)
-         (assoc :type (or type
-                          (guess-target-type target)))
-         (assoc-1 :page page)
-         (assoc-1 :limit limit)
-         (assoc :target target))))
+;; '(defn paginate [target page & [{:keys [type limit window]}]]
+;;    (letfn [(assoc-1 [map key val]
+;;              (if (nil? val)
+;;                map
+;;                (assoc map key val)))]
+;;      (-> (empty-pagination)
+;;          (assoc :type (or type
+;;                           (guess-target-type target)))
+;;          (assoc-1 :page page)
+;;          (assoc-1 :limit limit)
+;;          (assoc :target target))))
 
 
 (defn paginate [target page & [{:keys [type limit window]}]]
-  (let [total-count (get-total-count target)
+  (let [total-count (count target)
         limit (or limit 20)
-        items (get-items target page limit)
+        items target
         num-items (count items)
         start-idx (if (> num-items 0) (inc (* (dec page) limit)) 0)
         end-idx (if (> num-items 0) (dec (+ start-idx num-items)) 0)
+        start-page 1
         max-page (int (Math/ceil (/ total-count limit)))
         ]
     {:total-count total-count
      :items items
-     :count cnt
+     :count num-items
      :start-index start-idx
      :end-index end-idx
      :current-page page
+     :start-page start-page
+     :pages (for [i (range start-page (inc max-page))]
+              {:page i
+               :active? (= page i)})
      :max-page max-page
-     :has-next? (< page max-page)
-     :has-previous? (> page 1)
-     :next (when (< page max-page) (inc page))
-     :previous (when (> page 1) (dec page))}))
+     :next-page (when (< page max-page) (inc page))
+     :previous-page (when (> page 1) (dec page))}))
+
+;; (defn paginate [target page & [{:keys [type limit window]}]]
+;;   (let [items target]
+;;     {:total-count total-count
+;;      :limit (or limit 20)
+;;      :items target                      ; FIX:
+;;      :num-items (count )
+;;      :next-page 4
+;;      :previous-page 2
+;;      :target target
+;;      :pages [{:active? false :page "1"}
+;;              {:active? false :page "2"}
+;;              {:active? true  :page "3"}
+;;              {:active? false :page "4"}
+;;              {:active? false :page "5"}]}))
 
 ;; (def get-next-page nil)
 ;; (defmulti get-next-page :type)
@@ -121,37 +155,48 @@
 ;;   (not (nil? (get-previous-page pagination))))
 
 
-(def render nil)
-(defmulti render (fn [target & _] (:renderer target)))
+;; (def render nil)
+;; (defmulti render (fn [target & _] (:renderer target)))
 
-(defmethod render :default [pagination & opt]
-  ;; (let [ul []])
-  [:ul {:class "pagination"}
-   [:li (when (not (has-next? pagination))
-          {:class "disabled"})
-    [:a {:href "#"} "&laquo;"]]
+(defn get-next-page [pagination]
+  (:next-page pagination))
 
-   (for [item (get-items pagination)]
-     [:li [:a {:href "#"} "2"]])
+(defn get-previous-page [pagination]
+  (:previous-page pagination))
 
-   [:li (when (not (has-previous? pagination))
-          {:class "disabled"})
-    [:a {:href "#"} "&raquo;"]]
+(defn has-next? [pagination]
+  (not (nil? (get-next-page pagination))))
 
-   [:li {:class "active"}
-    [:a {:href "#"} "1"]]
-   [:li [:a {:href "#"} "2"]]
-   [:li [:a {:href "#"} "3"]]
-   [:li [:a {:href "#"} "4"]]
-   [:li [:a {:href "#"} "5"]]
-   [:li [:a {:href "#"} "&raquo;"]]])
+(defn has-previous? [pagination]
+  (not (nil? (get-previous-page pagination))))
+
+(defn get-pages [pagination]
+  (:pages pagination))
+
+(defn active? [page]
+  (:active? page))
+
+(defn render [pagination & opt]
+  `[:ul {:class "pagination"}
+    [:li ~(when-not (has-previous? pagination)
+            {:class "disabled"})
+     [:a {:href "#"} "&laquo;"]]
+
+    ~@(for [page (get-pages pagination)]
+        [:li (when (active? page)
+               {:class "active"})
+         [:a {:href "#"} (str (:page page))]])
+
+    [:li ~(when-not (has-next? pagination)
+            {:class "disabled"})
+     [:a {:href "#"} "&raquo;"]]
+    ])
 
 ;; (-> (paginate [1 2 3 4 5 6] 1)
 ;;     render
 ;;     html)
 
-(html [:ul nil [:li "foo"]])
-
+;; (html [:ul nil [:li "foo"]])
 
 
 (comment  (defn get-page [req]
