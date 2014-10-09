@@ -19,7 +19,6 @@
 ;;   (keys [_]
 ;;         (keys m)))
 
-
 ;; (def-map-type LazyMap [m]
 ;;   (get [_ k default-value]
 ;;        (if (contains? m k)
@@ -100,28 +99,41 @@
 ;;          (assoc :target target))))
 
 
+(defn get-pages-in-window [page max-page window]
+  (let [st     (- page window)
+        ed     (+ page window)
+        offset (max 0 (- 1 st))
+        st     (max 1 st)
+        ed     (+ ed offset)
+        offset (max 0 (- ed max-page))
+        ed     (min max-page ed)
+        st     (max 1 (- st offset))]
+    (range st (inc ed))))
+
 (defn paginate [target page & [{:keys [type limit window]}]]
   (let [total-count (count target)
         limit       (or limit 20)
-        items       target
+        items       (vec target)
         num-items   (count items)
         start-idx   (if (pos? num-items) (inc (* (dec page) limit)) 0)
         end-idx     (if (pos? num-items) (dec (+ start-idx num-items)) 0)
         start-page  1
-        max-page    (int (Math/ceil (/ total-count limit)))]
-    {:total-count   total-count
-     :items         items
-     :count         num-items
-     :start-index   start-idx
-     :end-index     end-idx
-     :current-page  page
-     :start-page    start-page
-     :pages         (for [i (range start-page (inc max-page))]
-                      {:page i
-                       :active? (= page i)})
-     :max-page      max-page
-     :next-page     (when (< page max-page) (inc page))
-     :previous-page (when (> page 1) (dec page))}))
+        max-page    (int (Math/ceil (/ total-count limit)))
+        window      (or window 2)]
+    {:total-count     total-count
+     :items           items
+     :count           num-items
+     :start-index     start-idx
+     :end-index       end-idx
+     :current-page    page
+     :start-page      start-page
+     :pages           (for [i (get-pages-in-window page max-page window)]
+                        {:page i
+                         :active? (= page i)})
+     ;; :pages
+     :max-page        max-page
+     :next-page       (when (< page max-page) (inc page))
+     :previous-page   (when (> page 1) (dec page))}))
 
 ;; (defn paginate [target page & [{:keys [type limit window]}]]
 ;;   (let [items target]
@@ -181,21 +193,43 @@
             {:class "disabled"})
      [:a {:href "#"} "&laquo;"]]
 
+    ~@(let [start-page (:page (first (get-pages pagination)))]
+        (when (> start-page 1)
+          (let [edge [[:li nil
+                       [:a {:href "#"} "1"]]]
+                edge (if (= start-page 3)
+                       (conj edge [:li nil
+                                   [:a {:href "#"} "2"]])
+                       edge)
+                edge (if (and (not= start-page 3)
+                              (not= start-page 2))
+                       (conj edge [:li {:class "disabled"} [:span "&hellip;"]])
+                       edge)]
+            edge)))
+
     ~@(for [page (get-pages pagination)]
         [:li (when (active? page)
                {:class "active"})
          [:a {:href "#"} (str (:page page))]])
 
+    ~@(let [end-page (:page (last (get-pages pagination)))
+            max-page (:max-page pagination)]
+        (when-not (= max-page end-page)
+          (let [edge [[:li nil
+                       [:a {:href "#"} (str max-page)]]]
+                edge (if (= end-page (- max-page 2))
+                       (cons [:li nil
+                              [:a {:href "#"} (str (dec max-page))]] edge)
+                       edge)
+                edge (if (and (not= end-page (- max-page 2))
+                              (not= end-page (dec max-page)))
+                       (cons [:li {:class "disabled"} [:span "&hellip;"]] edge)
+                       edge)]
+            edge)))
+
     [:li ~(when-not (has-next? pagination)
             {:class "disabled"})
-     [:a {:href "#"} "&raquo;"]]
-    ])
-
-;; (-> (paginate [1 2 3 4 5 6] 1)
-;;     render
-;;     html)
-
-;; (html [:ul nil [:li "foo"]])
+     [:a {:href "#"} "&raquo;"]]])
 
 
 (comment  (defn get-page [req]
@@ -215,24 +249,24 @@
                 select))
 
           (defn gen-pager-elements [current-page max-page display-limit]
-            (let [st (- current-page (quot display-limit 2))
-                  ed (+ st (dec display-limit))
+            (let [st     (- current-page (quot display-limit 2))
+                  ed     (+ st (dec display-limit))
                   offset (max 0 (- 1 st))
-                  st (max 1 st)
-                  ed (+ ed offset)
+                  st     (max 1 st)
+                  ed     (+ ed offset)
                   offset (max 0 (- ed max-page))
-                  ed (min max-page ed)
-                  st (max 1 (- st offset))
+                  ed     (min max-page ed)
+                  st     (max 1 (- st offset))
                   ]
               (range st (inc ed))))
 
           (defn paginate [query page per-page]
             (let [whole-cnt (get-count query)
-                  entities (fetch-paginated-entities query page per-page)
-                  cnt (count entities)
+                  entities  (fetch-paginated-entities query page per-page)
+                  cnt       (count entities)
                   start-idx (if (pos? cnt) (inc (* (dec page) per-page)) 0)
-                  end-idx (if (pos? cnt) (dec (+ start-idx cnt)) 0)
-                  max-page (int (Math/ceil (/ whole-cnt per-page)))]
+                  end-idx   (if (pos? cnt) (dec (+ start-idx cnt)) 0)
+                  max-page  (int (Math/ceil (/ whole-cnt per-page)))]
               {:whole-count whole-cnt
                :entities entities
                :count cnt
