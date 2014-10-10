@@ -1,9 +1,9 @@
 (ns clj-paginator.core
   (:require [clj-paginator.utils :as u]
+            [clojure.string :as str]
             [hiccup.core :refer [html]]
             [korma.core :refer :all]
             [potemkin :refer :all]))
-
 ;; (def-map-type LazyMap [m]
 ;;   (get [_ k default-value]
 ;;        (if (contains? m k)
@@ -187,49 +187,42 @@
 (defn active? [page]
   (:active? page))
 
+(defn pager-element [content href & {:keys [disabled active]}]
+  (let [cl (remove nil? [(when disabled "disabled")
+                         (when active "active")])]
+    [:li (when-not (empty? cl)
+           {:class (str/join " " cl)})
+     (if href
+       [:a {:href href} (str content)]
+       [:span  (str content)])]))
+
+(defn hellip []
+  (pager-element "&hellip;" nil :disabled true))
+
 (defn render [pagination & opt]
-  `[:ul {:class "pagination"}
-    [:li ~(when-not (has-previous? pagination)
-            {:class "disabled"})
-     [:a {:href "#"} "&laquo;"]]
+  (let [pages      (get-pages pagination)
+        start-page (:page (first pages))
+        end-page   (:page (last pages))
+        max-page   (:max-page pagination)]
+    `[:ul {:class "pagination"}
+      ~(pager-element "&laquo;" "#" :disabled (not (has-previous? pagination)))
 
-    ~@(let [start-page (:page (first (get-pages pagination)))]
-        (when (> start-page 1)
-          (let [edge [[:li nil
-                       [:a {:href "#"} "1"]]]
-                edge (if (= start-page 3)
-                       (conj edge [:li nil
-                                   [:a {:href "#"} "2"]])
-                       edge)
-                edge (if (and (not= start-page 3)
-                              (not= start-page 2))
-                       (conj edge [:li {:class "disabled"} [:span "&hellip;"]])
-                       edge)]
-            edge)))
+      ~@(when (> start-page 1)
+          (remove nil? [(pager-element "1" "#")
+                        (cond
+                         (= start-page 3)    (pager-element "2" "#")
+                         (not= start-page 2) (hellip))]))
 
-    ~@(for [page (get-pages pagination)]
-        [:li (when (active? page)
-               {:class "active"})
-         [:a {:href "#"} (str (:page page))]])
+      ~@(for [page (get-pages pagination)]
+          (pager-element (:page page) "#" :active (active? page)))
 
-    ~@(let [end-page (:page (last (get-pages pagination)))
-            max-page (:max-page pagination)]
-        (when-not (= max-page end-page)
-          (let [edge [[:li nil
-                       [:a {:href "#"} (str max-page)]]]
-                edge (if (= end-page (- max-page 2))
-                       (cons [:li nil
-                              [:a {:href "#"} (str (dec max-page))]] edge)
-                       edge)
-                edge (if (and (not= end-page (- max-page 2))
-                              (not= end-page (dec max-page)))
-                       (cons [:li {:class "disabled"} [:span "&hellip;"]] edge)
-                       edge)]
-            edge)))
+      ~@(when-not (= max-page end-page)
+          (remove nil? [(cond
+                         (= end-page (- max-page 2))    (pager-element (dec max-page) "#")
+                         (not= end-page (dec max-page)) (hellip))
+                        (pager-element max-page "#")]))
 
-    [:li ~(when-not (has-next? pagination)
-            {:class "disabled"})
-     [:a {:href "#"} "&raquo;"]]])
+      ~(pager-element "&raquo;" "#" :disabled (not (has-next? pagination)))]))
 
 
 (comment  (defn get-page [req]
@@ -276,7 +269,7 @@
                :max-page max-page
                :pager-elements (for [i (gen-pager-elements page max-page 5)]
                                  {:page i
-                                  :active? (= page i)})
+                                  :active (= page i)})
                :next? (< page max-page)
                :prev? (> page 1)
                :prev (dec page)
