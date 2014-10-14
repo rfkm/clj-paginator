@@ -4,6 +4,8 @@
             [hiccup.core :refer [html]]
             [korma.core :refer :all]
             [ring.util.codec :as codec]))
+
+
 ;; (def-map-type LazyMap [m]
 ;;   (get [_ k default-value]
 ;;        (if (contains? m k)
@@ -124,14 +126,15 @@
       (str (:uri req) "?" query-string))))
 
 (defn get-current-page-from-request [req]
-  (-> req
-      :query-string
-      form-decode-map
-      (get "page")
-      (Integer/parseInt)))
+  (try (-> req
+           :query-string
+           form-decode-map
+           (get "page")
+           (Integer/parseInt))
+       (catch NumberFormatException e nil)))
 
 (defn paginate [req target & [{:keys [page type limit window]}]]
-  (let [page (or page (get-current-page-from-request req))
+  (let [page (or page (get-current-page-from-request req) 1)
         total-count (count target)
         limit       (or limit 20)
         items       (vec target)
