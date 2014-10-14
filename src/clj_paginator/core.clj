@@ -3,7 +3,7 @@
             [clojure.string :as str]
             [hiccup.core :refer [html]]
             [korma.core :refer :all]
-            [potemkin :refer :all]))
+            [ring.util.codec :as codec]))
 ;; (def-map-type LazyMap [m]
 ;;   (get [_ k default-value]
 ;;        (if (contains? m k)
@@ -110,8 +110,29 @@
         st     (max 1 (- st offset))]
     (range st (inc ed))))
 
-(defn paginate [target page & [{:keys [type limit window]}]]
-  (let [total-count (count target)
+(defn- form-decode-map [params]
+  (let [params (codec/form-decode (or params ""))]
+    (if (map? params) params {})))
+
+(defn gen-route [req page]
+  (when page
+    (let [query-string (-> req
+                           :query-string
+                           form-decode-map
+                           (assoc "page" page)
+                           codec/form-encode)]
+      (str (:uri req) "?" query-string))))
+
+(defn get-current-page-from-request [req]
+  (-> req
+      :query-string
+      form-decode-map
+      (get "page")
+      (Integer/parseInt)))
+
+(defn paginate [req target & [{:keys [page type limit window]}]]
+  (let [page (or page (get-current-page-from-request req))
+        total-count (count target)
         limit       (or limit 20)
         items       (vec target)
         num-items   (count items)
@@ -120,7 +141,8 @@
         start-page  1
         max-page    (int (Math/ceil (/ total-count limit)))
         window      (or window 2)]
-    {:total-count     total-count
+    {:page            page
+     :total-count     total-count
      :items           items
      :count           num-items
      :start-index     start-idx
@@ -133,7 +155,8 @@
      ;; :pages
      :max-page        max-page
      :next-page       (when (< page max-page) (inc page))
-     :previous-page   (when (> page 1) (dec page))}))
+     :previous-page   (when (> page 1) (dec page))
+     :route-generator (partial gen-route req)}))
 
 ;; (defn paginate [target page & [{:keys [type limit window]}]]
 ;;   (let [items target]
@@ -192,7 +215,7 @@
                          (when active "active")])]
     [:li (when-not (empty? cl)
            {:class (str/join " " cl)})
-     (if href
+     (if (and href (not disabled))
        [:a {:href href} (str content)]
        [:span  (str content)])]))
 
@@ -203,26 +226,27 @@
   (let [pages      (get-pages pagination)
         start-page (:page (first pages))
         end-page   (:page (last pages))
-        max-page   (:max-page pagination)]
+        max-page   (:max-page pagination)
+        route      (:route-generator pagination)]
     `[:ul {:class "pagination"}
-      ~(pager-element "&laquo;" "#" :disabled (not (has-previous? pagination)))
+      ~(pager-element "&laquo;" (route (:previous-page pagination)) :disabled (not (has-previous? pagination)))
 
       ~@(when (> start-page 1)
-          (remove nil? [(pager-element "1" "#")
+          (remove nil? [(pager-element "1" (route 1))
                         (cond
-                         (= start-page 3)    (pager-element "2" "#")
+                         (= start-page 3)    (pager-element "2" (route 2))
                          (not= start-page 2) (hellip))]))
 
       ~@(for [page (get-pages pagination)]
-          (pager-element (:page page) "#" :active (active? page)))
+          (pager-element (:page page) (route (:page page)) :active (active? page)))
 
       ~@(when-not (= max-page end-page)
           (remove nil? [(cond
-                         (= end-page (- max-page 2))    (pager-element (dec max-page) "#")
+                         (= end-page (- max-page 2))    (pager-element (dec max-page) (route (dec max-page)))
                          (not= end-page (dec max-page)) (hellip))
-                        (pager-element max-page "#")]))
+                        (pager-element max-page (route max-page))]))
 
-      ~(pager-element "&raquo;" "#" :disabled (not (has-next? pagination)))]))
+      ~(pager-element "&raquo;" (route (get-next-page pagination)) :disabled (not (has-next? pagination)))]))
 
 
 (comment  (defn get-page [req]
