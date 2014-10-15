@@ -190,10 +190,11 @@
                     (not= start-page 2) [:ellipsis])])
 
               ~@(for [page pages
-                      :let [p (:page page)]]
+                      :let [p    (:page page)
+                            link (route p)]]
                   (if (:active page)
-                    [:page p (route p) :active]
-                    [:page p (route p)]))
+                    [:page p link :active]
+                    [:page p link]))
 
               ~@(when-not (= max-page end-page)
                   [(cond
