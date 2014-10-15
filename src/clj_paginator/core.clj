@@ -215,7 +215,10 @@
 (defmethod render-pager-element :page [[_ page link & attrs]]
   (let [create-attr-pair (fn [attr] [attr (.contains (vec attrs) attr)]) ; e.g., => [:disabled true]
         possible-attrs [:active :disabled]]
-    (apply pager-element page link (flatten (map create-attr-pair possible-attrs)))))
+    (->> possible-attrs
+         (map create-attr-pair)
+         flatten
+         (apply pager-element page link))))
 
 (defmethod render-pager-element :ellipsis [_]
   (hellip))
