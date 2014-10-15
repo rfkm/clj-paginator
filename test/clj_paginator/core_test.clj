@@ -88,6 +88,61 @@
     (paginate {} (range 10) {:page 2}) => (contains {:page 2})
     (paginate {:uri "/" :query-string "page=3"} (range 10) {:page 2}) => (contains {:page 2})))
 
+(facts "render-intermediate"
+  (let [req {:uri "/"}]
+    (fact "simple collection"
+      (render-intermediate (paginate req (range 5) {:page 3 :limit 1})) => [[:prev 2 "/?page=2"]
+                                                                            [:page 1 "/?page=1"]
+                                                                            [:page 2 "/?page=2"]
+                                                                            [:page 3 "/?page=3" :active]
+                                                                            [:page 4 "/?page=4"]
+                                                                            [:page 5 "/?page=5"]
+                                                                            [:next 4 "/?page=4"]])
+    (fact "link attributes"
+      (render-intermediate (paginate req (range 2) {:page 1 :limit 1})) => [[:prev nil nil]
+                                                                            [:page 1 "/?page=1" :active]
+                                                                            [:page 2 "/?page=2"]
+                                                                            [:next 2 "/?page=2"]]
+      (render-intermediate (paginate req (range 2) {:page 2 :limit 1})) => [[:prev 1 "/?page=1"]
+                                                                            [:page 1 "/?page=1"]
+                                                                            [:page 2 "/?page=2" :active]
+                                                                            [:next nil nil]])
+
+    (fact "sliding"
+      (render-intermediate (paginate req (range 5) {:page 1 :limit 1 :window 0})) => [[:prev nil nil]
+                                                                                      [:page 1 "/?page=1" :active]
+                                                                                      [:ellipsis]
+                                                                                      [:page 5 "/?page=5"]
+                                                                                      [:next 2 "/?page=2"]]
+
+      (render-intermediate (paginate req (range 5) {:page 2 :limit 1 :window 0})) => [[:prev 1 "/?page=1"]
+                                                                                      [:page 1 "/?page=1"]
+                                                                                      [:page 2 "/?page=2" :active]
+                                                                                      [:ellipsis]
+                                                                                      [:page 5 "/?page=5"]
+                                                                                      [:next 3 "/?page=3"]]
+
+      (render-intermediate (paginate req (range 5) {:page 3 :limit 1 :window 0})) => [[:prev 2 "/?page=2"]
+                                                                                      [:page 1 "/?page=1"]
+                                                                                      [:page 2 "/?page=2"]
+                                                                                      [:page 3 "/?page=3" :active]
+                                                                                      [:page 4 "/?page=4"]
+                                                                                      [:page 5 "/?page=5"]
+                                                                                      [:next 4 "/?page=4"]]
+
+      (render-intermediate (paginate req (range 5) {:page 4 :limit 1 :window 0})) => [[:prev 3 "/?page=3"]
+                                                                                      [:page 1 "/?page=1"]
+                                                                                      [:ellipsis]
+                                                                                      [:page 4 "/?page=4" :active]
+                                                                                      [:page 5 "/?page=5"]
+                                                                                      [:next 5 "/?page=5"]]
+
+      (render-intermediate (paginate req (range 5) {:page 5 :limit 1 :window 0})) => [[:prev 4 "/?page=4"]
+                                                                                      [:page 1 "/?page=1"]
+                                                                                      [:ellipsis]
+                                                                                      [:page 5 "/?page=5" :active]
+                                                                                      [:next nil nil]])))
+
 (facts "renderer"
   (let [req {:uri "/"}]
     (facts "default renderer"

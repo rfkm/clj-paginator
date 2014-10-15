@@ -154,64 +154,11 @@
      :start-page      start-page
      :pages           (for [i (get-pages-in-window page max-page window)]
                         {:page i
-                         :active? (= page i)})
-     ;; :pages
+                         :active (= page i)})
      :max-page        max-page
      :next-page       (when (< page max-page) (inc page))
      :previous-page   (when (> page 1) (dec page))
      :route-generator (partial gen-route req)}))
-
-;; (defn paginate [target page & [{:keys [type limit window]}]]
-;;   (let [items target]
-;;     {:total-count total-count
-;;      :limit (or limit 20)
-;;      :items target                      ; FIX:
-;;      :num-items (count )
-;;      :next-page 4
-;;      :previous-page 2
-;;      :target target
-;;      :pages [{:active? false :page "1"}
-;;              {:active? false :page "2"}
-;;              {:active? true  :page "3"}
-;;              {:active? false :page "4"}
-;;              {:active? false :page "5"}]}))
-
-;; (def get-next-page nil)
-;; (defmulti get-next-page :type)
-;; (defmethod get-next-page :default [pagination]
-;;   (not (nil? (get-previous-page pagination))))
-
-;; (def has-next? nil)
-;; (defmulti has-next? :type)
-;; (defmethod has-next? :default [pagination]
-;;   (not (nil? (get-next-page pagination))))
-
-;; (def has-previous? nil)
-;; (defmulti has-previous? :type)
-;; (defmethod has-previous? :default [pagination]
-;;   (not (nil? (get-previous-page pagination))))
-
-
-;; (def render nil)
-;; (defmulti render (fn [target & _] (:renderer target)))
-
-(defn get-next-page [pagination]
-  (:next-page pagination))
-
-(defn get-previous-page [pagination]
-  (:previous-page pagination))
-
-(defn has-next? [pagination]
-  (not (nil? (get-next-page pagination))))
-
-(defn has-previous? [pagination]
-  (not (nil? (get-previous-page pagination))))
-
-(defn get-pages [pagination]
-  (:pages pagination))
-
-(defn active? [page]
-  (:active? page))
 
 (defn pager-element [content href & {:keys [disabled active]}]
   (let [cl (remove nil? [(when disabled "disabled")
@@ -225,31 +172,60 @@
 (defn hellip []
   (pager-element "&hellip;" nil :disabled true))
 
-(defn render [pagination & opt]
-  (let [pages      (get-pages pagination)
+(defn render-intermediate [pagination & opt]
+  (let [pages      (:pages pagination)
         start-page (:page (first pages))
         end-page   (:page (last pages))
         max-page   (:max-page pagination)
-        route      (:route-generator pagination)]
+        route      (:route-generator pagination)
+        prev       (:previous-page pagination)
+        next       (:next-page pagination)]
+    (remove nil?
+            `[~[:prev prev (when prev (route prev))]
+
+              ~@(when (> start-page 1)
+                  [[:page 1 (route 1)]
+                   (cond
+                    (= start-page 3)    [:page 2 (route 2)]
+                    (not= start-page 2) [:ellipsis])])
+
+              ~@(for [page pages
+                      :let [p (:page page)]]
+                  (if (:active page)
+                    [:page p (route p) :active]
+                    [:page p (route p)]))
+
+              ~@(when-not (= max-page end-page)
+                  [(cond
+                    (= end-page (- max-page 2))    [:page (dec max-page) (route (dec max-page))]
+                    (not= end-page (dec max-page)) [:ellipsis])
+                   [:page max-page (route max-page)]])
+
+              ~[:next next (when next (route next))]])))
+
+(defmulti render-pager-element first)
+
+(defmethod render-pager-element :prev [[_ _ link]]
+  (pager-element "&laquo;" link :disabled (nil? link)))
+
+(defmethod render-pager-element :next [[_ _ link]]
+  (pager-element "&raquo;" link :disabled (nil? link)))
+
+(let [attrs [:active]]
+  (flatten (map (fn [attr] [attr (.contains attrs attr)]) [:active :disabled] )))
+
+(defmethod render-pager-element :page [[_ page link & attrs]]
+  (let [create-attr-pair (fn [attr] [attr (.contains (vec attrs) attr)]) ; e.g., => [:disabled true]
+        possible-attrs [:active :disabled]]
+    (apply pager-element page link (flatten (map create-attr-pair possible-attrs)))))
+
+(defmethod render-pager-element :ellipsis [_]
+  (hellip))
+
+(defn render [pagination & opt]
+  (let [intermediate (render-intermediate pagination)]
     `[:ul {:class "pagination"}
-      ~(pager-element "&laquo;" (route (:previous-page pagination)) :disabled (not (has-previous? pagination)))
-
-      ~@(when (> start-page 1)
-          (remove nil? [(pager-element "1" (route 1))
-                        (cond
-                         (= start-page 3)    (pager-element "2" (route 2))
-                         (not= start-page 2) (hellip))]))
-
-      ~@(for [page (get-pages pagination)]
-          (pager-element (:page page) (route (:page page)) :active (active? page)))
-
-      ~@(when-not (= max-page end-page)
-          (remove nil? [(cond
-                         (= end-page (- max-page 2))    (pager-element (dec max-page) (route (dec max-page)))
-                         (not= end-page (dec max-page)) (hellip))
-                        (pager-element max-page (route max-page))]))
-
-      ~(pager-element "&raquo;" (route (get-next-page pagination)) :disabled (not (has-next? pagination)))]))
+      ~@(map render-pager-element intermediate)]))
 
 
 (comment  (defn get-page [req]
