@@ -1,4 +1,4 @@
-# clj-paginator
+# clj-paginator [![Build Status](https://magnum.travis-ci.com/rkworks/clj-paginator.svg?token=tYXCVaMUq7uKBfjoGFAH)](https://magnum.travis-ci.com/rkworks/clj-paginator)
 
 A Clojure library designed to ... well, that part is up to you.
 
