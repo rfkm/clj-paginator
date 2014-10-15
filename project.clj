@@ -10,4 +10,5 @@
                                   [enlive "1.1.5"]
                                   [hiccup "1.0.5"]
                                   [korma "0.4.0"]
-                                  [midje "1.6.3"]]}})
+                                  [midje "1.6.3"]]
+                   :plugins [[lein-midje "3.1.1"]]}})
