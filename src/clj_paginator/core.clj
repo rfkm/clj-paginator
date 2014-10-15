@@ -211,9 +211,6 @@
 (defmethod render-pager-element :next [[_ _ link]]
   (pager-element "&raquo;" link :disabled (nil? link)))
 
-(let [attrs [:active]]
-  (flatten (map (fn [attr] [attr (.contains attrs attr)]) [:active :disabled] )))
-
 (defmethod render-pager-element :page [[_ page link & attrs]]
   (let [create-attr-pair (fn [attr] [attr (.contains (vec attrs) attr)]) ; e.g., => [:disabled true]
         possible-attrs [:active :disabled]]
