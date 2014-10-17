@@ -134,7 +134,7 @@
        (catch NumberFormatException e nil)))
 
 (defn paginate [req target & [{:keys [page type limit window]}]]
-  (let [page (or page (get-current-page-from-request req) 1)
+  (let [page        (or page (get-current-page-from-request req) 1)
         total-count (count target)
         limit       (or limit 20)
         items       (vec target)
