@@ -101,14 +101,14 @@
 ;;          (assoc :target target))))
 
 
-(defn get-pages-in-window [page max-page window]
+(defn get-pages-in-window [page end-page window]
   (let [st     (- page window)
         ed     (+ page window)
         offset (max 0 (- 1 st))
         st     (max 1 st)
         ed     (+ ed offset)
-        offset (max 0 (- ed max-page))
-        ed     (min max-page ed)
+        offset (max 0 (- ed end-page))
+        ed     (min end-page ed)
         st     (max 1 (- st offset))]
     (range st (inc ed))))
 
@@ -133,32 +133,72 @@
            (Integer/parseInt))
        (catch NumberFormatException e nil)))
 
-(defn paginate [req target & [{:keys [page type limit window]}]]
-  (let [page        (or page (get-current-page-from-request req) 1)
-        total-count (count target)
-        limit       (or limit 20)
-        items       (vec target)
-        num-items   (count items)
-        start-idx   (if (pos? num-items) (inc (* (dec page) limit)) 0)
-        end-idx     (if (pos? num-items) (dec (+ start-idx num-items)) 0)
-        start-page  1
-        max-page    (int (Math/ceil (/ total-count limit)))
-        window      (or window 2)]
-    {:page            page
+(defn get-total-count [target]
+  (count target))
+
+(defn get-items [target]
+  (vec target))
+
+(defn get-end-page [total-count limit]
+  (int (Math/ceil (/ total-count limit))))
+
+(defn paginate [req target & [{:keys [current-page type limit window-size]}]]
+  (let [current-page (or current-page (get-current-page-from-request req) 1)
+        total-count  (get-total-count target)
+        limit        (or limit 20)
+        items        (get-items target)
+        num-items    (count items)
+        start-idx    (if (pos? num-items) (inc (* (dec current-page) limit)) 0)
+        end-idx      (if (pos? num-items) (dec (+ start-idx num-items)) 0)
+        start-page   1
+        end-page     (get-end-page total-count limit)
+        window-size       (or window-size 2)]
+    {:current-page    current-page
      :total-count     total-count
      :items           items
      :count           num-items
      :start-index     start-idx
      :end-index       end-idx
-     :current-page    page
      :start-page      start-page
-     :pages           (for [i (get-pages-in-window page max-page window)]
-                        {:page i
-                         :active (= page i)})
-     :max-page        max-page
-     :next-page       (when (< page max-page) (inc page))
-     :previous-page   (when (> page 1) (dec page))
+     :pages           (for [i (get-pages-in-window current-page end-page window-size)]
+                        {:page   i
+                         :active (= current-page i)})
+     :end-page        end-page
+     :next-page       (when (< current-page end-page) (inc current-page))
+     :previous-page   (when (> current-page 1) (dec current-page))
      :route-generator (partial gen-route req)}))
+
+(defn render-intermediate [pagination & opt]
+  (let [pages                (:pages pagination)
+        start-page-in-window (:page (first pages))
+        end-page-in-window   (:page (last pages))
+        end-page             (:end-page pagination)
+        route                (:route-generator pagination)
+        prev                 (:previous-page pagination)
+        next                 (:next-page pagination)]
+    (remove nil?
+            `[~[:prev prev (when prev (route prev))]
+
+              ~@(when (> start-page-in-window 1)
+                  [[:page 1 (route 1)]
+                   (cond
+                    (= start-page-in-window 3)    [:page 2 (route 2)]
+                    (not= start-page-in-window 2) [:ellipsis])])
+
+              ~@(for [page pages
+                      :let [p    (:page page)
+                            link (route p)]]
+                  (if (:active page)
+                    [:page p link :active]
+                    [:page p link]))
+
+              ~@(when-not (= end-page end-page-in-window)
+                  [(cond
+                    (= end-page-in-window (- end-page 2))    [:page (dec end-page) (route (dec end-page))]
+                    (not= end-page-in-window (dec end-page)) [:ellipsis])
+                   [:page end-page (route end-page)]])
+
+              ~[:next next (when next (route next))]])))
 
 (defn pager-element [content href & {:keys [disabled active]}]
   (let [cl (remove nil? [(when disabled "disabled")
@@ -171,38 +211,6 @@
 
 (defn hellip []
   (pager-element "&hellip;" nil :disabled true))
-
-(defn render-intermediate [pagination & opt]
-  (let [pages      (:pages pagination)
-        start-page (:page (first pages))
-        end-page   (:page (last pages))
-        max-page   (:max-page pagination)
-        route      (:route-generator pagination)
-        prev       (:previous-page pagination)
-        next       (:next-page pagination)]
-    (remove nil?
-            `[~[:prev prev (when prev (route prev))]
-
-              ~@(when (> start-page 1)
-                  [[:page 1 (route 1)]
-                   (cond
-                    (= start-page 3)    [:page 2 (route 2)]
-                    (not= start-page 2) [:ellipsis])])
-
-              ~@(for [page pages
-                      :let [p    (:page page)
-                            link (route p)]]
-                  (if (:active page)
-                    [:page p link :active]
-                    [:page p link]))
-
-              ~@(when-not (= max-page end-page)
-                  [(cond
-                    (= end-page (- max-page 2))    [:page (dec max-page) (route (dec max-page))]
-                    (not= end-page (dec max-page)) [:ellipsis])
-                   [:page max-page (route max-page)]])
-
-              ~[:next next (when next (route next))]])))
 
 (defmulti render-pager-element first)
 
