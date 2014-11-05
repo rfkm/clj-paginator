@@ -1,9 +1,8 @@
 (ns clj-paginator.core
   (:require [clj-paginator.utils :as u]
-            [clojure.string :as str]
-            [hiccup.core :refer [html]]
             [korma.core :refer :all]
-            [ring.util.codec :as codec]))
+            [ring.util.codec :as codec]
+            [clj-paginator.renderer.default]))
 
 (defn get-pages-in-window [page end-page window]
   (let [st     (- page window)
@@ -71,74 +70,6 @@
      :next-page       (when (< current-page end-page) (inc current-page))
      :previous-page   (when (> current-page 1) (dec current-page))
      :route-generator (partial gen-route req)}))
-
-(defn render-intermediate [pagination & opt]
-  (let [pages                (:pages pagination)
-        start-page-in-window (:page (first pages))
-        end-page-in-window   (:page (last pages))
-        end-page             (:end-page pagination)
-        route                (:route-generator pagination)
-        prev                 (:previous-page pagination)
-        next                 (:next-page pagination)]
-    (remove nil?
-            `[~[:prev prev (when prev (route prev))]
-
-              ~@(when (> start-page-in-window 1)
-                  [[:page 1 (route 1)]
-                   (cond
-                    (= start-page-in-window 3)    [:page 2 (route 2)]
-                    (not= start-page-in-window 2) [:ellipsis])])
-
-              ~@(for [page pages
-                      :let [p    (:page page)
-                            link (route p)]]
-                  (if (:active page)
-                    [:page p link :active]
-                    [:page p link]))
-
-              ~@(when-not (= end-page end-page-in-window)
-                  [(cond
-                    (= end-page-in-window (- end-page 2))    [:page (dec end-page) (route (dec end-page))]
-                    (not= end-page-in-window (dec end-page)) [:ellipsis])
-                   [:page end-page (route end-page)]])
-
-              ~[:next next (when next (route next))]])))
-
-(defn pager-element [content href & {:keys [disabled active]}]
-  (let [cl (remove nil? [(when disabled "disabled")
-                         (when active "active")])]
-    [:li (when-not (empty? cl)
-           {:class (str/join " " cl)})
-     (if (and href (not disabled))
-       [:a {:href href} (str content)]
-       [:span  (str content)])]))
-
-(defn hellip []
-  (pager-element "&hellip;" nil :disabled true))
-
-(defmulti render-pager-element first)
-
-(defmethod render-pager-element :prev [[_ _ link]]
-  (pager-element "&laquo;" link :disabled (nil? link)))
-
-(defmethod render-pager-element :next [[_ _ link]]
-  (pager-element "&raquo;" link :disabled (nil? link)))
-
-(defmethod render-pager-element :page [[_ page link & attrs]]
-  (let [create-attr-pair (fn [attr] [attr (.contains (vec attrs) attr)]) ; e.g., => [:disabled true]
-        possible-attrs [:active :disabled]]
-    (->> possible-attrs
-         (map create-attr-pair)
-         flatten
-         (apply pager-element page link))))
-
-(defmethod render-pager-element :ellipsis [_]
-  (hellip))
-
-(defn render [pagination & opt]
-  (let [intermediate (render-intermediate pagination)]
-    `[:ul {:class "pagination"}
-      ~@(map render-pager-element intermediate)]))
 
 
 (comment  (defn get-page [req]
