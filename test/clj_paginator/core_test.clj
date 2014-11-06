@@ -6,25 +6,6 @@
             [korma.core :refer :all]
             [clojure.java.jdbc :as sql]))
 
-
-;; (defdb mem-db (h2 {:db "mem:test"}))
-
-;; (defn truncate [table]
-;;   (exec-raw [(str "TRUNCATE " table)]))
-
-;; (exec-raw "CREATE TABLE user (
-;;   id int(11) NOT NULL,
-;;   name varchar(255) DEFAULT NULL,
-;;   PRIMARY KEY (\"id\")
-;; )")
-
-
-
-;; (defentity user
-;;   (table "USER"))
-
-;; (select user)
-
 ;; (facts "guess-target-type"
 ;;   (fact "collection"
 ;;     (guess-target-type [0 1 2]) => :collection)
@@ -53,12 +34,6 @@
 ;;                                        }))
 ;;   (fact "custom target type"
 ;;     (paginate [] 1 {:limit 1 :type :my-type}) => (contains {:type :my-type})))
-
-;; (facts "get total count"
-;;   (fact ":collection"
-;;     (get-total-count (paginate [1 2 3] 1)) => 3)
-;;   (fact ":lazy return nil"
-;;     (get-total-count (paginate (range 1) 1)) => nil))
 
 (tabular
  (fact "gen-route"

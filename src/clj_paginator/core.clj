@@ -1,8 +1,8 @@
 (ns clj-paginator.core
-  (:require [clj-paginator.utils :as u]
-            [korma.core :refer :all]
-            [ring.util.codec :as codec]
-            [clj-paginator.renderer.default]))
+  (:require [clj-paginator.adapter :refer :all]
+            [clj-paginator.utils :as u]
+            [clj-paginator.renderer.default]
+            [ring.util.codec :as codec]))
 
 (defn get-pages-in-window [page end-page window]
   (let [st     (- page window)
@@ -36,12 +36,6 @@
            (Integer/parseInt))
        (catch NumberFormatException e nil)))
 
-(defn get-total-count [target]
-  (count target))
-
-(defn get-items [target]
-  (vec target))
-
 (defn get-end-page [total-count limit]
   (int (Math/ceil (/ total-count limit))))
 
@@ -49,7 +43,7 @@
   (let [current-page (or current-page (get-current-page-from-request req) 1)
         total-count  (get-total-count target)
         limit        (or limit 20)
-        items        (get-items target)
+        items        (get-items target current-page limit)
         num-items    (count items)
         start-idx    (if (pos? num-items) (inc (* (dec current-page) limit)) 0)
         end-idx      (if (pos? num-items) (dec (+ start-idx num-items)) 0)
