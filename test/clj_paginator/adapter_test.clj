@@ -34,10 +34,10 @@
 
 (facts "Pageable"
   (facts "Sequential"
-    (fact "get-total-count"
-      (get-total-count [1 2 3]) => 3
-      (get-total-count '(1 2 3)) => 3
-      (get-total-count (range 3)) => 3)
+    (fact "count-all"
+      (count-all [1 2 3]) => 3
+      (count-all '(1 2 3)) => 3
+      (count-all (range 3)) => 3)
     (fact "get-items"
       (get-items [1 2 3] 1 1) => [1]
       (get-items [1 2 3] 2 1) => [2]
@@ -55,8 +55,8 @@
 
   (facts "KormaAdapter"
     (let [users (->KormaAdapter (select* :user))]
-      (fact "get-total-count"
-        (get-total-count users) => 10)
+      (fact "count-all"
+        (count-all users) => 10)
       (fact "get-items"
         (get-items users 3 2) => [{:id 5 :name "name-5"}
                                   {:id 6 :name "name-6"}]

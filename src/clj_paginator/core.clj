@@ -41,7 +41,7 @@
 
 (defn paginate [req target & [{:keys [current-page type limit window-size]}]]
   (let [current-page (or current-page (get-current-page-from-request req) 1)
-        total-count  (get-total-count target)
+        total-count  (count-all target)
         limit        (or limit 20)
         items        (get-items target current-page limit)
         num-items    (count items)

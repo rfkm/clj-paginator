@@ -2,12 +2,12 @@
   (:require [korma.core :as db]))
 
 (defprotocol Pageable
-  (get-total-count [this])
+  (count-all [this])
   (get-items [this page limit]))
 
 (extend-protocol Pageable
   clojure.lang.Sequential
-  (get-total-count [this]
+  (count-all [this]
     (count this))
   (get-items [this page limit]
     (if (pos? page)
@@ -16,7 +16,7 @@
 
 (defrecord KormaAdapter [query]
   Pageable
-  (get-total-count [_]
+  (count-all [_]
     (-> query
         (db/aggregate (count :*) :cnt)
         db/select
