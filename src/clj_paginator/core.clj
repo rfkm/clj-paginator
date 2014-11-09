@@ -1,6 +1,5 @@
 (ns clj-paginator.core
   (:require [clj-paginator.adapter :refer :all]
-            [clj-paginator.utils :as u]
             [clj-paginator.renderer.default]
             [ring.util.codec :as codec]))
 
@@ -64,54 +63,3 @@
      :next-page       (when (< current-page end-page) (inc current-page))
      :previous-page   (when (> current-page 1) (dec current-page))
      :route-generator (partial gen-route req)}))
-
-
-(comment  (defn get-page [req]
-            (util/->int (get-in req [:query-params "page"] "1")))
-
-          (defn get-count [query]
-            (-> query
-                (aggregate (count :*) :cnt)
-                select
-                first
-                :cnt))
-
-          (defn fetch-paginated-entities [query page per-page]
-            (-> query
-                (offset (* (dec page) per-page))
-                (limit per-page)
-                select))
-
-          (defn gen-pager-elements [current-page max-page display-limit]
-            (let [st     (- current-page (quot display-limit 2))
-                  ed     (+ st (dec display-limit))
-                  offset (max 0 (- 1 st))
-                  st     (max 1 st)
-                  ed     (+ ed offset)
-                  offset (max 0 (- ed max-page))
-                  ed     (min max-page ed)
-                  st     (max 1 (- st offset))
-                  ]
-              (range st (inc ed))))
-
-          (defn paginate [query page per-page]
-            (let [whole-cnt (get-count query)
-                  entities  (fetch-paginated-entities query page per-page)
-                  cnt       (count entities)
-                  start-idx (if (pos? cnt) (inc (* (dec page) per-page)) 0)
-                  end-idx   (if (pos? cnt) (dec (+ start-idx cnt)) 0)
-                  max-page  (int (Math/ceil (/ whole-cnt per-page)))]
-              {:whole-count whole-cnt
-               :entities entities
-               :count cnt
-               :start-index start-idx
-               :end-index end-idx
-               :current-page page
-               :max-page max-page
-               :pager-elements (for [i (gen-pager-elements page max-page 5)]
-                                 {:page i
-                                  :active (= page i)})
-               :next? (< page max-page)
-               :prev? (> page 1)
-               :prev (dec page)
-               :next (inc page)})))

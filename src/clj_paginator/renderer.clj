@@ -1,7 +1,5 @@
 (ns clj-paginator.renderer
-  (:require [clojure.string :as str]
-            ;; [hiccup.core :refer [html]]
-            ))
+  (:require [clojure.string :as str]))
 
 (defn render-intermediate [pagination & opt]
   (let [pages                (:pages pagination)
@@ -34,7 +32,5 @@
                    [:page end-page (route end-page)]])
 
               ~[:next next (when next (route next))]])))
-
-
 
 (defmulti render (fn [pagination & opt] (:renderer pagination)))
