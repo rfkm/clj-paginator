@@ -38,27 +38,27 @@
       (count-all [1 2 3]) => 3
       (count-all '(1 2 3)) => 3
       (count-all (range 3)) => 3)
-    (fact "get-items"
-      (get-items [1 2 3] 1 1) => [1]
-      (get-items [1 2 3] 2 1) => [2]
-      (get-items [1 2 3] 4 1) => []
-      (get-items [1 2 3] 0 1) => []
-      (get-items [1 2 3] 1 2) => [1 2]
-      (get-items [1 2 3] 2 2) => [3]
-      (get-items '(1 2 3) 1 1) => '(1)
-      (get-items '(1 2 3) 2 1) => '(2)
-      (get-items '(1 2 3) 4 1) => '()
-      (get-items '(1 2 3) 0 1) => '()
-      (get-items '(1 2 3) 1 2) => '(1 2)
-      (get-items '(1 2 3) 2 2) => '(3)
-      (get-items (range 1 4) 1 2) => '(1 2)))
+    (fact "find-all"
+      (find-all [1 2 3] 1 1) => [1]
+      (find-all [1 2 3] 2 1) => [2]
+      (find-all [1 2 3] 4 1) => []
+      (find-all [1 2 3] 0 1) => []
+      (find-all [1 2 3] 1 2) => [1 2]
+      (find-all [1 2 3] 2 2) => [3]
+      (find-all '(1 2 3) 1 1) => '(1)
+      (find-all '(1 2 3) 2 1) => '(2)
+      (find-all '(1 2 3) 4 1) => '()
+      (find-all '(1 2 3) 0 1) => '()
+      (find-all '(1 2 3) 1 2) => '(1 2)
+      (find-all '(1 2 3) 2 2) => '(3)
+      (find-all (range 1 4) 1 2) => '(1 2)))
 
   (facts "KormaAdapter"
     (let [users (->KormaAdapter (select* :user))]
       (fact "count-all"
         (count-all users) => 10)
-      (fact "get-items"
-        (get-items users 3 2) => [{:id 5 :name "name-5"}
-                                  {:id 6 :name "name-6"}]
-        (get-items users 0 1) => []
-        (get-items users 100 1) => []))))
+      (fact "find-all"
+        (find-all users 3 2) => [{:id 5 :name "name-5"}
+                                 {:id 6 :name "name-6"}]
+        (find-all users 0 1) => []
+        (find-all users 100 1) => []))))

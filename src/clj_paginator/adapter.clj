@@ -3,15 +3,15 @@
 
 (defprotocol Pageable
   (count-all [this])
-  (get-items [this page limit]))
+  (find-all [this page per-page]))
 
 (extend-protocol Pageable
   clojure.lang.Sequential
   (count-all [this]
     (count this))
-  (get-items [this page limit]
+  (find-all [this page per-page]
     (if (pos? page)
-      (take limit (drop (* (dec page) limit) this))
+      (take per-page (drop (* (dec page) per-page) this))
       (empty this))))
 
 (defrecord KormaAdapter [query]
@@ -22,10 +22,10 @@
         db/select
         first
         :cnt))
-  (get-items [this page limit]
+  (find-all [this page per-page]
     (if (pos? page)
       (-> query
-          (db/offset (* (dec page) limit))
-          (db/limit limit)
+          (db/offset (* (dec page) per-page))
+          (db/limit per-page)
           db/select)
       [])))

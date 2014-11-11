@@ -1,14 +1,16 @@
 (ns clj-paginator.renderer
-  (:require [clojure.string :as str]))
+  (:require [clojure.string :as str]
+            [clj-paginator.pagination :refer :all]))
 
 (defn render-intermediate [pagination & opt]
-  (let [pages                (:pages pagination)
-        start-page-in-window (:page (first pages))
-        end-page-in-window   (:page (last pages))
-        end-page             (:end-page pagination)
+  (let [current              (page pagination)
+        pages                (pages-in-window pagination)
+        start-page-in-window (first pages)
+        last-page-in-window  (last pages)
+        last-page            (total-pages pagination)
         route                (:route-generator pagination)
-        prev                 (:previous-page pagination)
-        next                 (:next-page pagination)]
+        prev                 (previous-page pagination)
+        next                 (next-page pagination)]
     (remove nil?
             `[~[:prev prev (when prev (route prev))]
 
@@ -19,17 +21,17 @@
                     (not= start-page-in-window 2) [:ellipsis])])
 
               ~@(for [page pages
-                      :let [p    (:page page)
+                      :let [p    page
                             link (route p)]]
-                  (if (:active page)
+                  (if (= page current)
                     [:page p link :active]
                     [:page p link]))
 
-              ~@(when-not (= end-page end-page-in-window)
+              ~@(when-not (= last-page last-page-in-window)
                   [(cond
-                    (= end-page-in-window (- end-page 2))    [:page (dec end-page) (route (dec end-page))]
-                    (not= end-page-in-window (dec end-page)) [:ellipsis])
-                   [:page end-page (route end-page)]])
+                    (= last-page-in-window (- last-page 2))    [:page (dec last-page) (route (dec last-page))]
+                    (not= last-page-in-window (dec last-page)) [:ellipsis])
+                   [:page last-page (route last-page)]])
 
               ~[:next next (when next (route next))]])))
 
