@@ -1,5 +1,6 @@
 (ns clj-paginator.renderer-test
   (:require [clj-paginator.renderer :refer :all]
+            [clj-paginator.renderer.default]
             [clj-paginator.pagination :refer [paginate]]
             [midje.sweet :refer :all]))
 
