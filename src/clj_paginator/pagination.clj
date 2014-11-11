@@ -58,10 +58,9 @@
     (range st (inc ed))))
 
 (defn pages-in-window [pagination]
-  (let [page        (page pagination)
-        last-page   (total-pages pagination)
-        window-size (window-size pagination)]
-    (pages-in-window* page last-page window-size)))
+  (pages-in-window* (page pagination)
+                    (total-pages pagination)
+                    (window-size pagination)))
 
 (defn paginate [req pageable & [{:keys [page per-page window-size]}]]
   (let [page        (or page (get-current-page-from-request req) 1)
