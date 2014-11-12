@@ -21,11 +21,10 @@
                     (not= start-page-in-window 2) [:ellipsis])])
 
               ~@(for [page pages
-                      :let [p    page
-                            link (route p)]]
+                      :let [link (route page)]]
                   (if (= page current)
-                    [:page p link :active]
-                    [:page p link]))
+                    [:page page link :active]
+                    [:page page link]))
 
               ~@(when-not (= last-page last-page-in-window)
                   [(cond
