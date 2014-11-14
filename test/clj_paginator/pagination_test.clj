@@ -14,10 +14,10 @@
  "page=2"         3     "/users?page=3"
  "foo=bar&page=1" 3     (some-checker "/users?page=3&foo=bar" "/users?foo=bar&page=3"))
 
-(facts "pages-in-window*"
+(facts "pages-in-window"
   (tabular
    (fact "center"
-     (pages-in-window* ?page 10 1) => ?ret)
+     (pages-in-window ?page 10 1) => ?ret)
    ?page ?ret
    5     [4 5 6]
    1     [1 2 3]
