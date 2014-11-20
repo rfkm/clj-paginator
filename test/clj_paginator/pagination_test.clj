@@ -17,7 +17,7 @@
 (facts "pages-in-window"
   (tabular
    (fact "center"
-     (pages-in-window ?page 10 1) => ?ret)
+     (pages-in-window* ?page 10 1) => ?ret)
    ?page ?ret
    5     [4 5 6]
    1     [1 2 3]

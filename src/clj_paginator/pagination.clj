@@ -52,11 +52,11 @@
   (let [page (page pagination)]
     (when (> page 1) (dec page))))
 
-(defn pages-in-window
+(defn pages-in-window*
   ([pagination]
-     (pages-in-window (page pagination)
-                      (total-pages pagination)
-                      (window-size pagination)))
+     (pages-in-window* (page pagination)
+                       (total-pages pagination)
+                       (window-size pagination)))
   ([page last-page window-size]
      (let [st     (- page window-size)
            ed     (+ page window-size)
@@ -67,6 +67,9 @@
            ed     (min last-page ed)
            st     (max 1 (- st offset))]
        (range st (inc ed)))))
+
+(defn pages-in-window [pagination]
+  @(get pagination :pages-in-window))
 
 ;; (defn paginate [req pageable & [{:keys [page per-page window-size]}]]
 ;;   (let [page        (or page (get-current-page-from-request req) 1)
@@ -91,6 +94,7 @@
                      :per-page        per-page
                      :total-entries   (future (count-all pageable))
                      :entries         (future (find-all pageable page per-page))
-                     :route-generator (partial gen-route req)}
-        pagination  (assoc pagination :total-pages (future (total-pages* pagination)))]
-    pagination))
+                     :route-generator (partial gen-route req)}]
+    (-> pagination
+        (#(assoc % :total-pages (future (total-pages* %))))
+        (#(assoc % :pages-in-window (future (pages-in-window* %)))))))
